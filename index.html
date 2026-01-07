@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚽ Championnat 2026</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyD26jNyvIzWYNwfS97N27iZES-AFWVtIGc",
+            authDomain: "championnat-football.firebaseapp.com",
+            projectId: "championnat-football",
+            storageBucket: "championnat-football.firebasestorage.app",
+            messagingSenderId: "271329092716",
+            appId: "1:271329092716:web:68e7ff9e0527f489c36449"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+    </script>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const VisiteurApp = () => {
+            const [matches, setMatches] = useState([]);
+            const [cupMatches, setCupMatches] = useState([]);
+            const [scorers, setScorers] = useState({});
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                const unsubMatches = db.collection('championship').doc('matches').onSnapshot((doc) => { if (doc.exists) setMatches(doc.data().data || []); });
+                const unsubCup = db.collection('championship').doc('cup').onSnapshot((doc) => { if (doc.exists) setCupMatches(doc.data().data || []); });
+                const unsubScorers = db.collection('championship').doc('scorers').onSnapshot((doc) => { if (doc.exists) setScorers(doc.data().data || {}); });
+                setLoading(false);
+                return () => { unsubMatches(); unsubCup(); unsubScorers(); };
+            }, []);
+
+            const calculateTeamStats = () => {
+                const stats = { rouges: { points: 0, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, winStreak: 0, currentStreak: 0 }, blancs: { points: 0, played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, winStreak: 0, currentStreak: 0 } };
+                let biggestWin = { team: '', score: '', diff: 0 };
+                matches.forEach((match) => {
+                    if (match.scoreRouges !== null && match.scoreBlancs !== null) {
+                        stats.rouges.played++; stats.blancs.played++;
+                        stats.rouges.goalsFor += match.scoreRouges; stats.rouges.goalsAgainst += match.scoreBlancs;
+                        stats.blancs.goalsFor += match.scoreBlancs; stats.blancs.goalsAgainst += match.scoreRouges;
+                        const diff = Math.abs(match.scoreRouges - match.scoreBlancs);
+                        if (match.scoreRouges > match.scoreBlancs) {
+                            stats.rouges.points += 4; stats.rouges.wins++; stats.blancs.points += 1; stats.blancs.losses++;
+                            stats.rouges.currentStreak++; stats.blancs.currentStreak = 0;
+                            stats.rouges.winStreak = Math.max(stats.rouges.winStreak, stats.rouges.currentStreak);
+                            if (diff > biggestWin.diff) biggestWin = { team: 'Rouges', score: `${match.scoreRouges}-${match.scoreBlancs}`, diff };
+                        } else if (match.scoreBlancs > match.scoreRouges) {
+                            stats.blancs.points += 4; stats.blancs.wins++; stats.rouges.points += 1; stats.rouges.losses++;
+                            stats.blancs.currentStreak++; stats.rouges.currentStreak = 0;
+                            stats.blancs.winStreak = Math.max(stats.blancs.winStreak, stats.blancs.currentStreak);
+                            if (diff > biggestWin.diff) biggestWin = { team: 'Blancs', score: `${match.scoreBlancs}-${match.scoreRouges}`, diff };
+                        } else {
+                            stats.rouges.points += 2; stats.blancs.points += 2; stats.rouges.draws++; stats.blancs.draws++;
+                            stats.rouges.currentStreak = 0; stats.blancs.currentStreak = 0;
+                        }
+                    }
+                });
+                return { stats, biggestWin };
+            };
+
+            const calculateTopScorers = () => Object.entries(scorers).map(([name, goals]) => ({ name, goals })).sort((a, b) => b.goals - a.goals);
+            const calculateCupAggregate = () => {
+                if (cupMatches.length === 2 && cupMatches[0].scoreRouges !== null && cupMatches[1].scoreRouges !== null) {
+                    return { totalRouges: cupMatches[0].scoreRouges + cupMatches[1].scoreRouges, totalBlancs: cupMatches[0].scoreBlancs + cupMatches[1].scoreBlancs };
+                }
+                return null;
+            };
+
+            const { stats, biggestWin } = calculateTeamStats();
+            const topScorers = calculateTopScorers();
+            const cupAggregate = calculateCupAggregate();
+            const lastMatch = matches.filter(m => m.scoreRouges !== null).slice(-1)[0];
+            const nextMatch = matches.find(m => m.scoreRouges === null);
+
+            if (loading) return <div className="flex items-center justify-center h-screen bg-green-900 text-white text-xl">⚽ Chargement...</div>;
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-green-900 p-2">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="bg-white rounded-lg shadow-xl p-3 mb-2">
+                            <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 bg-red-600 rounded-full"></div>
+                                <div className="w-7 h-7 bg-white rounded-full border-2 border-gray-800"></div>
+                                <div><h1 className="text-lg font-bold">🏆 Championnat 2026</h1><p className="text-xs text-gray-600">Rouges vs Blancs</p></div>
+                            </div>
+                        </div>
+                        <div className="grid gap-2 mb-2">
+                            {lastMatch && (
+                                <div className="bg-white rounded-lg shadow-lg p-2">
+                                    <h2 className="text-sm font-bold mb-1">📅 Dernier - J{lastMatch.journee}</h2>
+                                    <p className="text-xs text-gray-600 mb-1 text-center">{new Date(lastMatch.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                                    <div className="flex justify-around items-center">
+                                        <div className="text-center"><div className="text-2xl font-bold text-red-600">{lastMatch.scoreRouges}</div><div className="text-xs mt-1">ROUGES</div>{lastMatch.buteursRouges && lastMatch.buteursRouges.length > 0 && <div className="mt-1 bg-red-50 p-1 rounded text-xs">{lastMatch.buteursRouges.map((b, i) => <p key={i}>⚽{b}</p>)}</div>}</div>
+                                        <div className="text-xl text-gray-400">-</div>
+                                        <div className="text-center"><div className="text-2xl font-bold text-blue-600">{lastMatch.scoreBlancs}</div><div className="text-xs mt-1">BLANCS</div>{lastMatch.buteursBlancs && lastMatch.buteursBlancs.length > 0 && <div className="mt-1 bg-blue-50 p-1 rounded text-xs">{lastMatch.buteursBlancs.map((b, i) => <p key={i}>⚽{b}</p>)}</div>}</div>
+                                    </div>
+                                </div>
+                            )}
+                            {nextMatch && (
+                                <div className="bg-white rounded-lg shadow-lg p-2">
+                                    <h2 className="text-sm font-bold mb-1">📅 Prochain - J{nextMatch.journee}</h2>
+                                    <p className="text-sm font-bold text-center mb-1">{new Date(nextMatch.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                                    <div className="flex justify-center items-center gap-4"><div className="text-center"><div className="w-10 h-10 bg-red-600 rounded-full mx-auto"></div><div className="text-xs mt-1 font-semibold">ROUGES</div></div><div className="text-xl font-bold text-gray-400">VS</div><div className="text-center"><div className="w-10 h-10 bg-white rounded-full mx-auto border-2 border-gray-800"></div><div className="text-xs mt-1 font-semibold">BLANCS</div></div></div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="bg-white rounded-lg shadow-lg p-2 mb-2">
+                            <h2 className="text-base font-bold mb-1">🏆 Classement</h2>
+                            <div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="border-b"><th className="text-left p-1">Équipe</th><th className="text-center p-1">J</th><th className="text-center p-1">V</th><th className="text-center p-1">N</th><th className="text-center p-1">D</th><th className="text-center p-1">BP</th><th className="text-center p-1">BC</th><th className="text-center p-1">Diff</th><th className="text-center p-1 font-bold">Pts</th></tr></thead><tbody>
+                                {[{name:'Rouges',color:'text-red-600',...stats.rouges},{name:'Blancs',color:'text-blue-600',...stats.blancs}].sort((a,b)=>b.points-a.points||(b.goalsFor-b.goalsAgainst)-(a.goalsFor-a.goalsAgainst)).map((team,idx)=><tr key={team.name} className={`border-b ${idx===0?'bg-yellow-50':''}`}><td className={`p-1 font-bold ${team.color}`}>{idx===0&&'👑 '}{team.name}</td><td className="text-center p-1">{team.played}</td><td className="text-center p-1">{team.wins}</td><td className="text-center p-1">{team.draws}</td><td className="text-center p-1">{team.losses}</td><td className="text-center p-1">{team.goalsFor}</td><td className="text-center p-1">{team.goalsAgainst}</td><td className="text-center p-1">{team.goalsFor-team.goalsAgainst}</td><td className="text-center p-1 font-bold">{team.points}</td></tr>)}
+                            </tbody></table></div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1 mb-2">
+                            <div className="bg-white rounded-lg shadow p-2"><h3 className="font-bold text-xs mb-1">📈 Série</h3><p className="text-xs text-red-600">R:{stats.rouges.winStreak}V</p><p className="text-xs text-blue-600">B:{stats.blancs.winStreak}V</p></div>
+                            <div className="bg-white rounded-lg shadow p-2"><h3 className="font-bold text-xs mb-1">🎯 Large</h3>{biggestWin.team?<p className={`text-xs ${biggestWin.team==='Rouges'?'text-red-600':'text-blue-600'}`}>{biggestWin.team}:{biggestWin.score}</p>:<p className="text-xs text-gray-500">-</p>}</div>
+                            <div className="bg-white rounded-lg shadow p-2"><h3 className="font-bold text-xs mb-1">👥 Top</h3>{topScorers[0]?<p className="text-xs text-purple-600 font-semibold">{topScorers[0].name}({topScorers[0].goals})</p>:<p className="text-xs text-gray-500">-</p>}</div>
+                        </div>
+                        <div className="bg-white rounded-lg shadow-lg p-2 mb-2">
+                            <h2 className="text-base font-bold mb-1">🎯 Buteurs</h2>
+                            {topScorers.length>0?<div className="grid grid-cols-2 gap-1">{topScorers.slice(0,10).map((scorer,idx)=><div key={scorer.name} className="flex items-center gap-1 p-1 bg-gray-50 rounded text-xs"><div className="font-bold text-gray-400 w-4">{idx+1}</div><div className="flex-1 font-semibold">{scorer.name}</div><div className="text-base font-bold text-green-600">{scorer.goals}</div></div>)}</div>:<p className="text-xs text-center py-2">Aucun buteur</p>}
+                        </div>
+                        {cupAggregate&&<div className="bg-gradient-to-r from-yellow-100 to-yellow-50 rounded-lg shadow-lg p-2 border-2 border-yellow-400 mb-2"><h2 className="text-base font-bold mb-1">🏆 COUPE</h2><div className="bg-white rounded-lg p-2"><h3 className="font-bold text-center text-sm mb-1">Score Cumulé</h3><div className="flex justify-around items-center"><div className="text-center"><div className="text-3xl font-bold text-red-600">{cupAggregate.totalRouges}</div><div className="text-xs">ROUGES</div></div><div className="text-xl text-gray-400">-</div><div className="text-center"><div className="text-3xl font-bold text-blue-600">{cupAggregate.totalBlancs}</div><div className="text-xs">BLANCS</div></div></div>{cupAggregate.totalRouges!==cupAggregate.totalBlancs&&<p className="text-center mt-2 text-sm font-bold">🏆 <span className={cupAggregate.totalRouges>cupAggregate.totalBlancs?'text-red-600':'text-blue-600'}>{cupAggregate.totalRouges>cupAggregate.totalBlancs?'ROUGES':'BLANCS'}</span></p>}</div></div>}
+                        <div className="bg-white rounded-lg shadow-lg p-2"><h2 className="text-base font-bold mb-1">Historique</h2>{matches.filter(m=>m.scoreRouges!==null).length>0?<div className="space-y-1">{matches.filter(m=>m.scoreRouges!==null).reverse().map(match=><div key={match.journee} className="border-l-2 border-green-600 pl-2 py-1"><div className="flex justify-between text-xs mb-1"><span className="font-bold">J{match.journee}</span><span className="text-gray-600">{new Date(match.date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</span></div><div className="flex justify-around"><span className="text-red-600 font-bold">{match.scoreRouges}</span><span className="text-gray-400">-</span><span className="text-blue-600 font-bold">{match.scoreBlancs}</span></div></div>)}</div>:<p className="text-xs text-center py-2">Aucun match</p>}</div>
+                    </div>
+                </div>
+            );
+        };
+        ReactDOM.render(<VisiteurApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
