@@ -77,7 +77,7 @@
             const topAssists = calculateTopAssists();
             const lastMatch = matches.filter(m => m.scoreRouges !== null).slice(-1)[0];
             const nextMatch = matches.find(m => m.scoreRouges === null);
-            const finalMatch = matches.find(m => m.journee === 16);
+            const finalMatch = matches.find(m => m.journee === 17);
             const isFinalMatchPlayed = finalMatch && finalMatch.scoreRouges !== null;
 
             if (loading) return <div className="flex items-center justify-center h-screen bg-green-900 text-white text-xl">⚽ Chargement...</div>;
@@ -143,8 +143,8 @@
                             )}
                             {nextMatch && (
                                 <div className="bg-white rounded-lg shadow-lg p-2">
-                                    <h2 className="text-sm font-bold mb-1">📅 Prochain Match - J{nextMatch.journee}{nextMatch.journee === 16 && ' 🍽️'}</h2>
-                                    {nextMatch.journee === 16 && (
+                                    <h2 className="text-sm font-bold mb-1">📅 Prochain Match - J{nextMatch.journee}{nextMatch.journee === 17 && ' 🍽️'}</h2>
+                                    {nextMatch.journee === 17 && (
                                         <p className="text-xs text-yellow-700 font-semibold mb-1 text-center">⚠️ FINALE - L'équipe perdante offre le repas !</p>
                                     )}
                                     <p className="text-sm font-bold text-center mb-1">{new Date(nextMatch.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
@@ -192,7 +192,7 @@
 
                         <div className="bg-white rounded-lg shadow-lg p-2">
                             <h2 className="text-base font-bold mb-1">Historique</h2>
-                            {matches.filter(m=>m.scoreRouges!==null).length>0?<div className="space-y-1">{matches.filter(m=>m.scoreRouges!==null).reverse().map(match=><div key={match.journee} className="border-l-2 border-green-600 pl-2 py-1"><div className="flex justify-between text-xs mb-1"><span className="font-bold">J{match.journee}{match.journee===16&&' 🍽️'}</span><span className="text-gray-600">{new Date(match.date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</span></div><div className="flex justify-around"><span className="text-red-600 font-bold">{match.scoreRouges}</span><span className="text-gray-400">-</span><span className="text-blue-600 font-bold">{match.scoreBlancs}</span></div></div>)}</div>:<p className="text-xs text-center py-2">Aucun match</p>}
+                            {matches.filter(m=>m.scoreRouges!==null).length>0?<div className="space-y-1">{matches.filter(m=>m.scoreRouges!==null).reverse().map(match=><div key={match.journee} className="border-l-2 border-green-600 pl-2 py-1"><div className="flex justify-between text-xs mb-1"><span className="font-bold">J{match.journee}{match.journee===17&&' 🍽️'}</span><span className="text-gray-600">{new Date(match.date+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</span></div><div className="flex justify-around"><span className="text-red-600 font-bold">{match.scoreRouges}</span><span className="text-gray-400">-</span><span className="text-blue-600 font-bold">{match.scoreBlancs}</span></div></div>)}</div>:<p className="text-xs text-center py-2">Aucun match</p>}
                         </div>
                     </div>
                 </div>
@@ -201,4 +201,4 @@
         ReactDOM.render(<VisiteurApp />, document.getElementById('root'));
     </script>
 </body>
-</html>
+    </html>
